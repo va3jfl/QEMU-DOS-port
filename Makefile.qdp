@@ -1,0 +1,104 @@
+# QEMU DOS port - the DOS95 kernel cut down to what boots MS-DOS 7.1 into the QEMU manager
+# and runs the virtual machines.  Built from the same tree, into build-qdp/, with -DQDP:
+#
+#   make -f Makefile.qdp            build-qdp/QEMUDOS.KRN + build-qdp/QEMUDOS.COM
+#
+# DOS95's own build (make) is not touched by this file: every change for the QEMU DOS port in a
+# shared source is under #ifdef QDP, so `make` still gives DOS95's kernel byte for byte.
+B       = build-qdp
+CC      = gcc
+LD      = ld
+NASM    = nasm
+QDPDEF  = -DQDP
+CFLAGS  = -m32 -march=i486 -mtune=i386 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -fno-builtin \
+          -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -mno-80387 -mno-red-zone \
+          -O2 -fno-strict-aliasing -fno-delete-null-pointer-checks --param=min-pagesize=0 -Wno-array-bounds -Wno-misleading-indentation \
+          -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Ikernel -Iqdp/kernel $(QDPDEF)
+LDFLAGS = -m elf_i386 -T qdp/kernel/linker-qdp.ld -nostdlib
+
+# What the QEMU DOS port leaves out of DOS95's kernel: the desktop and everything on it - the Start
+# menu, taskbar and desktop icons (desktop.c), Explorer, Control Panel, Task Manager, Find, the screen
+# saver, Display/Sounds/Network properties, the shell's file operations and shortcuts, drag and drop -
+# the Java runtime, the DOS boxes' windows (vmwin.c) and the system sounds.  The V86 machinery the
+# system's own DOS runs in stays whole (with what it emulates for a DOS program), as do the drivers.
+QDP_OUT = desktop explorer cpanel taskman saver find shellext dnd shelldnd netcpl mixer wave display \
+          fileops shell vmwin javaapp javawin guitest qlaunch
+KSRC_C  = $(filter-out $(patsubst %,kernel/%.c,$(QDP_OUT)),$(wildcard kernel/*.c)) $(wildcard qdp/kernel/*.c)
+KOBJ    = $(patsubst %.c,$(B)/%.o,$(notdir $(KSRC_C))) $(B)/start.o $(B)/ksetjmp.o $(B)/ring3.o $(B)/ucrt.o $(B)/ksyms.o
+vpath %.c kernel qdp/kernel
+KEXPORT_OBJS = $(addprefix $(B)/,wm.o gfx.o widgets.o menu.o dialog.o app.o filedlg.o font_ui.o icons.o colors.o textedit.o console.o)
+
+.DEFAULT_GOAL := all
+include qemu/Makefile.qemu
+include lwip/Makefile.lwip
+include synth/Makefile.synth
+LIBGCC  = $(shell $(CC) -m32 -print-libgcc-file-name)
+
+# (+ the OPL3 of a Sound Blaster 16 for the machine: qemu/hw/adlib-dos95.c on Nuked OPL3, -soundhw adlib - QEMU DOS port only)
+QDP_QOBJ  = $(patsubst $(QDIR)/%.c,$(B)/qemu/%.o,$(QSRC)) $(B)/qemu/dos95/setjmp.o $(B)/qemu/hw/adlib-dos95.o
+QDP_LWOBJ = $(patsubst $(LWDIR)/%.c,$(B)/lwip/%.o,$(LWSRC))
+QDP_SYOBJ = $(B)/synth/opl3.o $(B)/synth/opl3glue.o
+
+all: $(B)/QEMUDOS.COM $(B)/QEMUDOS.KRN
+
+$(B)/QEMUDOS.COM: loader/loader.asm
+	@mkdir -p $(B)
+	$(NASM) -f bin -DQDP -o $@ $< -l $(B)/loader.lst
+
+$(B)/start.o: kernel/start.asm
+	@mkdir -p $(B)
+	$(NASM) -f elf32 -o $@ $<
+$(B)/ksetjmp.o: kernel/ksetjmp.asm
+	$(NASM) -f elf32 -o $@ $<
+$(B)/ring3.o: kernel/ring3.asm
+	$(NASM) -f elf32 -o $@ $<
+$(B)/ucrt.o: kernel/ucrt.asm
+	$(NASM) -f elf32 -o $@ $<
+$(B)/kheap3.o: kernel/kheap3.c kernel/kheap3.h kernel/kernel.h
+	@mkdir -p $(B)
+	$(CC) $(CFLAGS) -aux-info $(B)/kheap3.aux -c -o $@ $<
+	@b=$$(size -A $@ | awk '$$1 == ".text" || $$1 == ".data" || $$1 == ".bss" { n += $$2 } END { print n + 0 }'); \
+	 [ "$$b" = 0 ] || { echo "*** kheap3.o: $$b bytes in .text/.data/.bss"; rm -f $@; exit 1; }
+$(B)/%.o: %.c $(wildcard kernel/*.h) $(wildcard qdp/kernel/*.h) $(wildcard lwip/dos95/*.h) qemu/dos95/qemu-glue.h
+	@mkdir -p $(B)
+	$(CC) $(CFLAGS) -aux-info $(B)/$*.aux -c -o $@ $<
+KCLASSIFY_OBJS = $(filter-out $(B)/ksyms.o,$(patsubst %.c,$(B)/%.o,$(notdir $(KSRC_C)))) $(QDP_LWOBJ)
+$(B)/ksyms.c: $(KEXPORT_OBJS) $(KCLASSIFY_OBJS) qdp/kernel/exports.txt tools/genksyms.py
+	python3 tools/genksyms.py qdp/kernel/exports.txt $(KEXPORT_OBJS) --all $(KCLASSIFY_OBJS) --aux $(patsubst %.c,$(B)/%.aux,$(notdir $(KSRC_C))) > $@
+$(B)/ksyms.o: $(B)/ksyms.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# QEMU 0.14.1 and lwIP: the same sources and flags as DOS95's, -DQDP, objects of their own
+$(B)/qemu/%.o: $(QDIR)/%.c $(QHDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(QCFLAGS) $(QDPDEF) -c -o $@ $<
+$(B)/qemu/target-i386/op_helper.o $(B)/qemu/cpu-exec.o: QCFLAGS += $(QHELPER_CFLAGS)
+$(B)/qemu/dos95/setjmp.o: $(QDIR)/dos95/setjmp.asm
+	@mkdir -p $(dir $@)
+	$(NASM) -f elf32 -o $@ $<
+$(B)/qemu/dos95/math.o $(B)/qemu/dos95/libc.o: QCFLAGS += -fno-builtin
+$(B)/qemu/arch_init.o: QCFLAGS += -DCONFIG_ADLIB -DHAS_YMF262
+$(B)/lwip/%.o: $(LWDIR)/%.c $(LWHDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(LWCFLAGS) $(QDPDEF) -c -o $@ $<
+$(B)/synth/opl3.o: $(SYDIR)/Nuked-OPL3-765ec96/opl3.c $(SYDIR)/Nuked-OPL3-765ec96/opl3.h
+	@mkdir -p $(dir $@)
+	$(CC) $(SYCFLAGS) -c -o $@ $<
+$(B)/synth/opl3glue.o: synth/dos95/opl3glue.c $(SYDIR)/Nuked-OPL3-765ec96/opl3.h
+	@mkdir -p $(dir $@)
+	$(CC) $(SYCFLAGS) -c -o $@ $<
+
+$(B)/kernel.elf: $(KOBJ) $(QDP_QOBJ) $(QDP_LWOBJ) $(QDP_SYOBJ) qdp/kernel/linker-qdp.ld
+	$(LD) $(LDFLAGS) -o $@ $(KOBJ) $(QDP_QOBJ) $(QDP_LWOBJ) $(QDP_SYOBJ) $(LIBGCC)
+
+$(B)/QEMUDOS.KRN: $(B)/kernel.elf
+	@a=$$(nm $< | awk '$$3 == "__percpu_start" { print $$1 }'); b=$$(nm $< | awk '$$3 == "__percpu_end" { print $$1 }'); \
+	 n=$$(( (0x$$b - 0x$$a) / 4096 )); m=$$(awk '/define PERCPU_PAGES/ { print $$3 }' kernel/kernel.h); \
+	 [ $$n -le $$m ] || { echo "*** .percpu is $$n pages - kernel.h PERCPU_PAGES says $$m"; exit 1; }
+	objcopy -O binary $< $@
+	@ls -la $@
+
+clean:
+	rm -rf $(B)
+
+.PHONY: all clean

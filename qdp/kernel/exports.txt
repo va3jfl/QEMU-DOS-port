@@ -1,0 +1,358 @@
+# QEMU DOS port (Makefile.qdp): kernel/exports.txt without the names of the parts it leaves out -
+# no .D95 program runs under it; the table is kept so the kernel's own loader code links unchanged.
+# Kernel primitives exported to native DOS95 apps (in addition to every global symbol
+# of the toolkit objects listed in the Makefile: wm, gfx, widgets, menu, dialog, app,
+# filedlg, font_ui, icons, colors, textedit, console).  One name per line.
+# memory / threads / time
+kmalloc
+kzalloc
+kfree
+kstrdup
+page_alloc
+page_free
+mm_free_pages
+mm_total_pages
+kprintf
+kputs
+ksnprintf
+kvsnprintf
+thread_create
+thread_exit
+thread_sleep_ms
+thread_yield
+thread_wake
+thread_use_fpu
+thread_signal
+cur_thread
+jiffies
+pit_cycles
+pit_cycles64
+krand
+# libc-level string helpers the SDK libc leans on
+memcpy
+memset
+memmove
+memcmp
+strlen
+strcmp
+strncmp
+stricmp
+strnicmp
+strcpy
+strncpy
+strlcpy
+strlcat
+strcat
+strchr
+strrchr
+strstr
+strtol
+atoi
+# hosted-runtime services (the SDK libc and pthreads are built on these)
+# files (DOS services)
+fs_open
+fs_create
+fs_close
+fs_read
+fs_write
+fs_seek
+fs_filesize
+fs_getattr
+fs_setattr
+fs_unlink
+fs_rename
+fs_mkdir
+fs_rmdir
+fs_chdir
+fs_getcwd
+fs_getdrive
+fs_setdrive
+fs_drives
+fs_drive_type
+fs_is_cdrom
+fs_diskfree
+fs_findfirst
+fs_findnext
+fs_findclose
+fs_read_file
+fs_write_file
+fs_exists
+fs_get_datetime
+fs_decode_datetime
+fs_get_filetime
+fs_set_filetime
+path_join
+path_basename
+path_dirname
+fs_strerror
+lfn_available
+# sockets (lwip/dos95/sock.c)
+ks_socket
+ks_close
+ks_bind
+ks_listen
+ks_accept
+ks_connect
+ks_send
+ks_recv
+ks_sendto
+ks_recvfrom
+ks_shutdown
+ks_getsockname
+ks_getpeername
+ks_setopt
+ks_getopt
+ks_poll
+ks_wait_any
+ks_available
+ks_valid
+ks_resolve
+ks_local_ip
+ks_hostname
+net_get_status
+net_ping
+net_resolve
+# shell / apps / Java
+cfg
+config_save
+config_add_recent
+app_register
+app_find
+app_launch
+app_launch_file
+clipboard_set_text
+clipboard_get_text
+clipboard_has_text
+kmod_run
+kmod_exit
+kmod_stdout
+kmod_show_console
+kmod_stdin
+kmod_path
+kmod_running
+kmod_window_count
+kmod_wait_windows
+# v37: the system interface, second edition (kernel/proc.h, KERNEL-INTERFACE.md)
+# handles
+h_close
+h_dup
+h_type
+h_read
+h_write
+h_avail
+h_peek
+h_wait
+h_nonblock
+# processes
+proc_spawn
+proc_wait
+proc_kill
+proc_terminate
+proc_end_signal
+proc_pid
+proc_open
+proc_parent
+proc_list
+proc_name
+proc_exit_code
+proc_env
+proc_cmdline
+std_type
+std_read
+std_write
+std_handle
+pipe_create
+kmod_run_in
+# the console as a terminal
+con_mode
+con_readkey
+con_peekkeys
+con_info
+con_goto
+con_attr
+con_fill
+con_read_cells
+con_write_cells
+con_title
+con_flush_input
+con_read
+con_write
+con_alloc
+con_attach
+con_free
+# file locks and sharing
+fs_lock_range
+fs_unlock_range
+fs_test_range
+fs_open_share
+fs_dup
+fs_handle_path
+fs_truename
+# named synchronisation objects, shared memory
+ipc_mutex
+ipc_event
+ipc_sem
+ipc_open
+ipc_release
+ipc_reset
+ipc_pulse
+shm_create
+shm_map
+shm_size
+shm_unmap
+# libraries loaded at run time
+dll_load
+dll_sym
+dll_ctors
+dll_dtors
+# #302: the destructors of the program and its libraries at its exit, in their order (kmod.c; proc.h) - the SDK's exit() runs them
+kmod_finis
+dll_name
+# streaming audio
+pcm_open
+pcm_write
+pcm_space
+pcm_pending
+pcm_volume
+scr_w
+scr_h
+desktop_h
+
+# font registry (kernel/fontmgr.c) - a program asks for a face by name and style
+# instead of reaching for a global font symbol, and picks up installed fonts
+font_count
+font_at
+font_family_count
+font_family_at
+font_family_is_fixed
+font_sizes_for
+font_find
+font_find_ex
+font_install
+font_uninstall
+font_error
+font_get
+font_metrics
+
+# v38: what a Windows program needs (Wine) - KERNEL-INTERFACE.md, "v38"
+# signals for ring-3 programs (kernel/usig.c): faults and raised signals to a handler
+sig_register
+sig_altstack
+sig_mask
+sig_pending
+sig_raise
+sig_return
+thread_id
+tls_set
+# the program's own LDT (kernel/ldt.c)
+ldt_set
+ldt_get
+# the program's own address space (kernel/aspace.c)
+as_map
+as_unmap
+as_protect
+as_query
+as_ranges
+as_share
+as_copy
+# handles between programs, and one wait for everything (kernel/kobj.c, sock.c, fslock.c)
+h_give
+h_table_grow
+h_poll
+fs_give
+ks_give
+pipe_write_handles
+pipe_get_handles
+# MIDI from a program (kernel/midi.c); the registry read again (kernel/ini.c)
+midi_out
+midi_out_reset
+reg_reload
+# what kind of .EXE a file is - PE, NE or neither (kernel/shell.c: the shell gives Windows programs to Wine)
+# v40: a program's big memory, committed as it is touched (kernel/vmem.c: the SDK's mmap)
+vm_alloc
+vm_free
+# v41 (#390): its pages untouched again - their frames given back, the addresses kept
+vm_decommit
+# v40: a program's and a thread's processor time and memory, and priority (kmod.c, sched.c)
+proc_times
+proc_memory
+proc_priority
+thread_times
+thread_priority
+# v40: a disk or a volume read sector by sector - a program's device files (dossvc.c, fslock.c)
+disk_info
+disk_read
+# v40: the pointer moved and confined by a program (mouse.c); its screen mode (gui.c)
+mouse_set_pos
+mouse_get_pos
+mouse_clip
+display_mode
+display_modes
+dll_info
+# v40: the shell told of a program's changes to files, and a file's Properties for a program
+# (kernel/explorer.c, shell.c: the SDK's SHChangeNotify and SHFileOperation, the "properties" verb)
+# v41 (#198): Explorer's Find... and Set as Wallpaper for the SDK's shell context menu and
+# SystemParametersInfo(SPI_SETDESKWALLPAPER) (kernel/find.c, desktop.c)
+# v40 (#206): the host of programs' context-menu handlers (SHELLEXT.D95) takes Explorer's requests
+# and answers them (kernel/shellext.c)
+# v41: the kernel batch (kernel/proc.h "v41", KERNEL-INTERFACE.md "As built (v41)")
+# #203: DOS's code page, the one its 8.3 names are in (dossvc.c)
+dos_codepage
+# #195: the screen's mode changes counted (gui.c) - WE_DISPLAYCHANGE carries it
+display_gen
+# #135.9: a program's own cursors - colour, inverting, animated (cursor.c; wm.h cursor_create)
+cursor_create
+cursor_destroy
+# #190: drag and drop between programs (dnd.c; wm.h, proc.h) - the source's calls, the target's
+# #190: the source's data given again at the drop (dnd.c; proc.h) - made as it is dropped: 7-Zip's out of an archive
+# #190 (2): a file's or a folder's time by its name (dossvc.c; proc.h) - SetFileTime on a folder, utime
+fs_set_pathtime
+# #252: the game port (joy.c; proc.h) - its raw times and buttons, a joystick's calibrated axes, the setup Control Panel > Joystick keeps
+joy_read
+joy_pos
+joy_config
+# #251: the printer ports (lpt.c; proc.h) - for the spooler: their state, bytes to a printer; DOS programs' printing taken as jobs
+lpt_ports
+lpt_status
+lpt_reset
+lpt_write
+lpt_capture
+lpt_spooler
+lpt_jobs
+lpt_take
+# #336: DNS as Windows 95's DNS Configuration (net.c) - the servers asked, in order; the suffixes a
+# name of one label is tried with; the HOSTS file both ways - the SDK's resolver (sdk/posix/resolv.c,
+# netdb.c) reads them; a socket's multicast groups (lwip/dos95/sock.c - IP_ADD_MEMBERSHIP)
+net_dns_servers
+net_dns_search
+net_hosts_lookup
+net_hosts_name
+ks_mcast
+fs_seek64
+fs_filesize64
+# v41 (#298): the system clock set by a program (#299: the SDK's settimeofday/SetSystemTime; TZCLOCK at DST changes)
+fs_set_date
+fs_set_time
+# v41 (#295): folders watched for changes - kernel/proc.h (ReadDirectoryChangesW, inotify; the SDK on them)
+fs_watch_open
+fs_watch_add
+fs_watch_rm
+fs_watch_read
+# v41 (#299): counts the clock being set - the SDK C library reads the time again when it changed
+clock_gen
+# v43 (#505): MIDISYN.D95 - the kernel's MIDI, queued with each message's time (kernel/midi.c); a stream's prebuffer
+msynth_attach
+msynth_read
+msynth_clock
+msynth_detach
+msynth_level
+pcm_prebuf
+# v44 (item 3a, #526): the kernel's own measures (kernel/smp.c kstat_read) - the legs' limits read by a program (SMP44.D95 stats)
+kstat_read
+# v44 (item 3a, M5): the processors a program may use - their number, a thread's and a program's (the SDK: sysconf,
+# GetSystemInfo, SetThreadAffinityMask, SetProcessAffinityMask, sched_setaffinity, pthread_setaffinity_np)
+smp_cpu_count
+smp_cpu_mask
+thread_affinity
+proc_affinity
+smp_cpu_now
