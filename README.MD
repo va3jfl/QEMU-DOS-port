@@ -9,7 +9,7 @@ QEMU DOS port 1.0 - a PC that runs PCs
     <img src="2047mb-4cpu-machine-running.png" width="40%" alt="QEMU RUNNING" style="margin-right: 2%;">
   </a> <br>
   <a href="setup-1-welcome.png" target="_blank">
-    <img src="setup-1-welcome.png" width="55%" alt="Setup Welcome" style="margin-left: 2%;">
+    <img src="setup-1-welcome.png" width="35%" alt="Setup Welcome" style="margin-left: 2%;">
   </a>
 </p>
 
