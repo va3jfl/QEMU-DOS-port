@@ -1,6 +1,18 @@
 QEMU DOS port 1.0 - a PC that runs PCs
 ======================================
 
+📸 Screenshots
+*Click images to expand*
+
+<p align="left">
+  <a href="2047mb-4cpu-machine-running.png" target="_blank">
+    <img src="2047mb-4cpu-machine-running.png" width="40%" alt="QEMU RUNNING" style="margin-right: 2%;">
+  </a> <br>
+  <a href="setup-1-welcome.png" target="_blank">
+    <img src="setup-1-welcome.png" width="55%" alt="Setup Welcome" style="margin-left: 2%;">
+  </a>
+</p>
+
 MS-DOS 7.1 starts the computer; the QEMU DOS port's 32-bit kernel (DOS95's,
 with its drivers for today's disks, USB, sound and network cards) runs
 QEMU 0.14.1 - the PC emulator - over the whole screen.  No desktop: the QEMU
