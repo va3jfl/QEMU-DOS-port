@@ -6,7 +6,7 @@ QEMU DOS port 1.0 - a PC that runs PCs
 
 <p align="left">
   <a href="2047mb-4cpu-machine-running.png" target="_blank">
-    <img src="2047mb-4cpu-machine-running.png" width="30%" alt="QEMU RUNNING" style="margin-right: 2%;">
+    <img src="2047mb-4cpu-machine-running.png" width="35%" alt="QEMU RUNNING" style="margin-right: 2%;">
   </a>
   <a href="setup-1-welcome.png" target="_blank">
     <img src="setup-1-welcome.png" width="35%" alt="Setup Welcome" style="margin-left: 2%;">
